@@ -1,27 +1,22 @@
-# Oytra — COD RTO Reduction Strategy
+# Oytra COD RTO Decision Engine
+## Founder Business Memo
 
-**Prepared for:** Oytra  
-**Project:** COD Risk Decision Engine  
-**Dataset:** 2,018 historical orders
+### Executive Summary
 
-## 1. Executive Summary
+The sample contains 2,018 COD orders. Of the 2,017 orders with a completed delivery outcome, 573 were RTO, representing approximately 28.4%.
 
-The objective is to reduce Return to Origin (RTO) losses without unnecessarily cancelling genuine customer orders.
+The proposed decision engine uses historical order attributes to assign a heuristic risk score and recommend one of four actions:
 
-The historical dataset contains 2,018 orders, with 573 RTO orders among 2,017 completed orders, representing an RTO rate of approximately 28.4%.
+- Ship as-is
+- Ship after WhatsApp confirmation
+- Nudge to prepaid
+- Hold or cancel
 
-I recommend a risk-based COD decision system with four outcomes:
+The objective is to reduce avoidable RTO costs without unnecessarily rejecting genuine customers.
 
-1. Ship as-is.
-2. Ship after WhatsApp confirmation.
-3. Nudge the customer towards prepaid payment.
-4. Hold or cancel only when multiple strong risk signals justify intervention.
+### 1. Key Findings
 
-The system should protect revenue while reducing avoidable logistics losses.
-
-## 2. Important Data Findings
-
-### Finding 1: Previous RTO history is a strong risk signal
+**Finding 1 — Previous RTO history is a useful risk signal.**
 
 | Previous RTOs | Orders | RTO rate |
 |---|---:|---:|
@@ -29,22 +24,35 @@ The system should protect revenue while reducing avoidable logistics losses.
 | 1 | 111 | 34.23% |
 | 2 | 34 | 76.47% |
 
-Customers with two previous RTOs have a substantially higher historical RTO rate. However, this group contains only 34 orders, so further validation is required before using it for automatic cancellation.
+Customers with two previous RTOs had a substantially higher observed RTO rate. The proposed model therefore assigns a higher risk weight to repeat RTO history.
 
-### Finding 2: Delivery geography has substantial variation
+**Finding 2 — RTO rates vary by state.**
 
-| State | RTO rate |
+| State | Observed RTO rate |
 |---|---:|
 | Bihar | 53.42% |
 | Uttar Pradesh | 44.67% |
 | Madhya Pradesh | 38.46% |
+| Assam | 34.92% |
 | Maharashtra | 17.95% |
 
-This suggests that delivery location should influence risk scoring. State-level patterns should not become blanket delivery restrictions.
+State is used as a risk signal, not as a reason to automatically reject an order. The model should be monitored for unfair geographic outcomes.
 
-### Finding 3: Acquisition channels have different RTO outcomes
+**Finding 3 — Courier and acquisition source performance varies.**
 
-| Acquisition source | RTO rate |
+Courier RTO rates:
+
+| Courier | RTO rate |
+|---|---:|
+| Xpressbees | 31.23% |
+| Ecom Express | 30.16% |
+| BlueDart | 28.88% |
+| Shadowfax | 28.44% |
+| Delhivery | 25.92% |
+
+Acquisition source RTO rates:
+
+| Source | RTO rate |
 |---|---:|
 | Meta Ads | 31.32% |
 | Instagram Organic | 29.36% |
@@ -53,111 +61,83 @@ This suggests that delivery location should influence risk scoring. State-level 
 | WhatsApp Broadcast | 26.47% |
 | Direct | 22.66% |
 
-Meta Ads has the highest observed RTO rate, while Direct has the lowest. However, Meta Ads also contributes 779 orders, so automatically rejecting this channel could harm acquisition.
+These are historical correlations. They do not prove that a courier or marketing channel causes an RTO.
 
-### Additional finding: Order value matters
+### 2. Financial Impact
 
-Orders above ₹1,500 have a 38.87% RTO rate, compared with 20.19% for orders between ₹1,000 and ₹1,500.
+Given business assumptions:
 
-## 3. Financial Analysis
+- Product price: ₹649
+- Gross margin: 62%
+- Forward shipping: ₹65
+- Return shipping: ₹65
+- Packaging and handling: ₹25
+- Returned-product loss assumption: 8% of ₹180 = ₹14.40
 
-| Metric | Amount |
-|---|---:|
-| Average product selling price | ₹649 |
-| Gross margin | 62% |
-| Gross profit per delivered order | ₹402.38 |
-| Forward shipping | ₹65 |
-| Return shipping | ₹65 |
-| Packaging and handling | ₹25 |
-| Returned product loss | ₹14.40 |
-| Total estimated loss per RTO | ₹169.40 |
+Estimated RTO cost:
 
-The shipping-only break-even RTO probability is approximately 70.37%.
+₹65 + ₹65 + ₹25 + ₹14.40 = **₹169.40 per RTO**
 
-This means a high-risk order should not automatically be cancelled just because its RTO probability is elevated.
+Estimated prepaid RTO cost at a 4% RTO rate:
 
-The ₹300+ customer acquisition cost also matters when evaluating the longer-term customer relationship. However, acquisition cost is already incurred when an order arrives, so it should not simply be added to the marginal shipping calculation.
+₹169.40 × 4% = **₹6.78 per prepaid order**
 
-## 4. Recommended Decision Policy
+These are estimates based on the supplied assumptions, not verified accounting figures.
 
-| Risk category | Recommended action |
+### 3. Decision Rules
+
+| Risk score | Action |
 |---|---|
-| Low | Ship as-is |
-| Medium | WhatsApp confirmation |
-| High | Encourage prepaid payment |
-| Critical | Hold for manual review or cancellation |
+| 0–30 | Ship as-is |
+| 31–55 | WhatsApp confirmation |
+| 56–75 | Prepaid nudge |
+| 76–100 | Hold/cancel, except new customers receive confirmation |
 
-Additional rules:
+The thresholds and weights are configurable in `config.json`.
 
-- Do not reject customers based only on their state or acquisition channel.
-- Use previous RTO history as one risk signal.
-- Validate incomplete addresses and suspicious customer details.
-- Provide manual review for uncertain cases.
-- Keep risk thresholds configurable.
+The model uses previous RTO history, state, courier, acquisition source, and order value. It does not use an LLM to calculate risk.
 
-## 5. Historical Simulation
+### 4. Operations vs Marketing Trade-off
 
-The current decision engine was run against all 2,018 historical orders.
+Operations should reduce avoidable delivery and return costs. Marketing should protect genuine customer conversion and avoid unnecessary cancellation.
 
-| Decision | Orders |
-|---|---:|
-| Ship as-is | 1,822 |
-| Ship after confirmation | 185 |
-| Nudge to prepaid | 10 |
-| Hold / cancel | 1 |
+A strict cancellation policy may reduce RTOs but also reject genuine orders. The safer approach is to confirm uncertain orders and reserve cancellation for the highest-risk cases.
 
-These are model-generated historical decision counts, not verified avoided RTOs or actual financial savings.
+### 5. Failure Modes and Detection
 
-The next validation step is to compare each decision against historical delivery outcomes and measure false positives and false negatives.
-
-## 6. Operations vs Marketing
-
-Operations wants to reduce avoidable shipping and return costs.
-
-Marketing wants to protect genuine customers acquired through paid channels.
-
-The proposed system balances these interests by applying interventions before cancellation.
-
-WhatsApp confirmation and prepaid nudges create opportunities to retain genuine customers while identifying potentially risky orders.
-
-Automatic cancellation should remain a last resort.
-
-## 7. Failure Modes and Detection
-
-| Failure mode | Detection or mitigation |
+| Failure mode | Detection / mitigation |
 |---|---|
-| Genuine order flagged as risky | Measure false-positive rate and provide manual review |
-| Fake or incomplete address | Address validation and LLM-assisted review |
-| Hinglish address incorrectly flagged | Preserve local-language delivery information |
-| Historical data imbalance | Monitor sample sizes and validate on new orders |
-| Incorrect phone number | Phone-number validation |
-| Courier performance changes | Monitor courier-specific RTO rates |
-| Customer does not respond | Use a defined confirmation timeout and manual review |
+| Incorrect or incomplete address | Address validation and manual review |
+| Hinglish address misunderstood | LLM-assisted interpretation with human review |
+| Genuine customer does not respond | Avoid automatic cancellation solely due to no reply |
+| Incorrect risk classification | Review decision outcomes and recalibrate weights |
+| State-level bias | Monitor false positives and approval rates by state |
+| Courier performance changes | Recalculate courier-level RTO rates regularly |
+| LLM unavailable | Continue with deterministic rules and flag manual review |
 
-LLM output should be treated as a validation signal, not an automatic cancellation decision.
-
-## 8. Two-Week Implementation Plan
+### 6. Two-Week Rollout Plan
 
 **Week 1**
-- Clean and normalize historical order data.
-- Validate risk rules against historical outcomes.
-- Improve customer, address and phone validation.
-- Implement WhatsApp confirmation workflow.
-- Test prepaid discount economics.
+- Validate data quality and clean order fields.
+- Run the model in shadow mode without changing fulfillment.
+- Review high-risk orders with the operations team.
+- Compare model decisions against actual outcomes.
 
 **Week 2**
-- Integrate the decision engine with Shopify order events.
-- Build the founder dashboard using actual order outcomes.
-- Run a controlled pilot with a subset of COD orders.
-- Measure RTO rate, conversion, cancellation rate and net financial impact.
-- Review results with Operations and Marketing before expanding.
+- Pilot WhatsApp confirmation on a limited eligible segment.
+- Track response, cancellation, prepaid conversion, and RTO outcomes.
+- Compare genuine-order loss against avoided RTO cost.
+- Adjust thresholds based on measured results.
 
-## 9. Final Recommendation
+### 7. Limitations
 
-Implement a configurable, risk-based COD decision engine with WhatsApp confirmation and prepaid nudges.
+- This is a prototype based on a historical sample, not a production integration.
+- Risk scores are heuristic and are not calibrated probabilities.
+- WhatsApp responses and prepaid conversion are simulated.
+- Financial impact is estimated from configurable assumptions.
+- The dashboard summarizes the supplied historical dataset; it does not represent live yesterday's orders.
+- No live Shopify, courier, or WhatsApp API is connected.
 
-Avoid blanket customer or location restrictions.
+### Recommendation
 
-The system should optimize for net business value: reducing avoidable RTO losses while preserving genuine customer orders and acquisition opportunities.
-
-**Important limitation:** The current implementation is a prototype using manually configured risk weights. Its scores are not calibrated RTO probabilities, and its simulated decisions must be validated before production deployment.
+Start with shadow-mode evaluation and human review. Only introduce automated fulfillment actions after the model has been tested against real outcomes and false-positive rates.

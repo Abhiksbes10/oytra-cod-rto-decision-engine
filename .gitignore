@@ -6,3 +6,6 @@ __pycache__/
 
 # Customer data — never publish
 data/orders_sample.csv
+# Exclude duplicate project and generated ZIP
+oytra-cod-rto-decision-engine/
+oytra-project-review.zip

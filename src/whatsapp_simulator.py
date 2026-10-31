@@ -1,43 +1,46 @@
+import random
+from src.risk_model import load_config
+from src.decision_engine import calculate_prepaid_discount
 
-def simulate_whatsapp_response(response, language="English"):
-    messages = {
-        "English": "Please confirm your COD order. Reply YES to confirm or NO to cancel.",
-        "Hindi": "कृपया अपना COD ऑर्डर कन्फर्म करें। YES या NO में जवाब दें।",
-        "Hinglish": "Please apna COD order confirm karein. YES ya NO reply karein."
-    }
 
-    response = str(response).strip().lower()
+def simulate_whatsapp(order, decision, response=None, seed=None):
+    config = load_config()
+    settings = config["simulation"]
 
-    if response in ("yes", "y"):
-        status = "CONFIRMED"
-        next_action = "SHIP_ORDER"
+    rng = random.Random(seed)
 
-    elif response in ("no", "n"):
-        status = "CANCELLED_BY_CUSTOMER"
-        next_action = "CANCEL_ORDER"
+    language = "Hinglish"
+    if response is None:
+        response = rng.choices(
+            ["YES", "NO", "NO_REPLY"],
+            weights=[
+                settings["confirmation_response_probability"] * 0.7,
+                settings["confirmation_response_probability"] * 0.3,
+                1 - settings["confirmation_response_probability"]
+            ],
+            k=1
+        )[0]
 
-    elif response in ("", "no_reply", "timeout"):
-        status = "NO_RESPONSE"
-        next_action = "MANUAL_REVIEW"
+    discount = calculate_prepaid_discount(order, decision)
 
+    if decision["decision"] == "SHIP_AS_IS":
+        outcome = "SHIP"
+    elif decision["decision"] == "HOLD_OR_CANCEL":
+        outcome = "HOLD"
+    elif decision["decision"] == "NUDGE_TO_PREPAID":
+        converted = rng.random() < settings["prepaid_conversion_probability"]
+        outcome = "PREPAID" if converted else "COD"
+    elif response == "YES":
+        outcome = "CONFIRMED"
+    elif response == "NO":
+        outcome = "CANCELLED"
     else:
-        status = "UNCLEAR_RESPONSE"
-        next_action = "MANUAL_REVIEW"
+        outcome = "NO_RESPONSE"
 
     return {
-        "message": messages.get(language, messages["English"]),
-        "response": response or "no_reply",
-        "status": status,
-        "next_action": next_action
-    }
-
-
-def calculate_prepaid_offer(order_value, discount_percent):
-    discount = round(order_value * discount_percent / 100, 2)
-
-    return {
-        "original_amount": round(order_value, 2),
-        "discount_percent": discount_percent,
-        "discount_amount": discount,
-        "prepaid_amount": round(order_value - discount, 2)
+        "language": language,
+        "response": response,
+        "confirmation_window_hours": settings["confirmation_window_hours"],
+        "prepaid_discount": discount,
+        "outcome": outcome
     }

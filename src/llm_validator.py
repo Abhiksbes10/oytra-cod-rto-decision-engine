@@ -1,57 +1,64 @@
-
-import json
 import os
-
-from openai import OpenAI
 
 
 def validate_order_text(customer_name, address):
-    if not os.getenv("OPENAI_API_KEY"):
-        return {
-            "status": "NOT_CONFIGURED",
-            "reason": "OpenAI API key is not configured."
-        }
-
-    client = OpenAI()
-
-    prompt = f"""
-    Review this COD order for obvious data-quality issues.
-
-    Customer name: {customer_name}
-    Delivery address: {address}
-
-    Check for:
-    - Fake or test names
-    - Gibberish or incomplete addresses
-    - Unclear delivery directions
-
-    Do not reject an order based only on a local-language
-    or Hinglish address.
-
-    Return JSON with:
-    {{
-      "suspicious": true or false,
-      "reason": "short explanation"
-    }}
+    """
+    Optional LLM validation.
+    No API key means the rule-based system continues without LLM validation.
     """
 
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key:
+        return {
+            "status": "NOT_CONFIGURED",
+            "name_quality": "NOT_CHECKED",
+            "address_quality": "NOT_CHECKED",
+            "interpretation": "LLM validation unavailable"
+        }
+
     try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=api_key)
+
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
+            temperature=0,
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
-                    "content": "You validate COD order text. Be conservative."
+                    "content": (
+                        "You validate ecommerce customer names and delivery "
+                        "addresses. Interpret Hinglish address instructions. "
+                        "Do not invent missing details. Return JSON with keys: "
+                        "name_quality, address_quality, interpretation, "
+                        "needs_manual_review."
+                    )
                 },
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
+                {
+                    "role": "user",
+                    "content": (
+                        f"Customer name: {customer_name}\n"
+                        f"Delivery address: {address}"
+                    )
+                }
+            ]
         )
 
-        return json.loads(response.choices[0].message.content)
+        import json
+        result = json.loads(response.choices[0].message.content)
+
+        return {
+            "status": "SUCCESS",
+            **result
+        }
 
     except Exception as error:
         return {
             "status": "ERROR",
-            "reason": str(error)
+            "name_quality": "NOT_CHECKED",
+            "address_quality": "NOT_CHECKED",
+            "interpretation": str(error)
         }
