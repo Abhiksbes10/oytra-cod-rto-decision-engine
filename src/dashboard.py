@@ -8,9 +8,9 @@ import streamlit as st
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from decision_engine import decide_order
+from src.decision_engine import decide_order
 
-DATA_FILE = BASE_DIR / "data" / "orders_sample.csv"
+DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "orders_sample.csv"
 
 st.set_page_config(page_title="Oytra RTO Dashboard", layout="wide")
 st.title("Oytra — COD & RTO Decision Dashboard")

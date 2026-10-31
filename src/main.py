@@ -1,7 +1,7 @@
 
 import pandas as pd
 
-from risk_model import calculate_risk
+from src.risk_model import calculate_risk
 
 
 def main():

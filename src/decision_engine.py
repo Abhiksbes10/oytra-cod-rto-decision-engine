@@ -1,5 +1,5 @@
 
-from risk_model import calculate_risk
+from src.risk_model import calculate_risk
 
 
 def decide_order(order):
