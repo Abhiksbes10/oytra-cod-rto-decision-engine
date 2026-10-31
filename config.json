@@ -1,0 +1,24 @@
+
+{
+  "risk_thresholds": {
+    "low_max": 30,
+    "medium_max": 55,
+    "high_max": 75
+  },
+  "financials": {
+    "product_price": 649,
+    "gross_margin_percent": 62,
+    "forward_shipping": 65,
+    "return_shipping": 65,
+    "packaging_handling": 25,
+    "returned_product_cost": 180,
+    "returned_product_cost_percent": 8,
+    "acquisition_cost": 300,
+    "prepaid_rto_rate_percent": 4
+  },
+  "prepaid_discount": {
+    "low_risk": 0,
+    "medium_risk": 10,
+    "high_risk": 20
+  }
+}
