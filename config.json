@@ -1,8 +1,8 @@
 {
   "risk_thresholds": {
-    "low_max": 30,
-    "medium_max": 55,
-    "high_max": 75
+    "low_max": 10,
+    "medium_max": 30,
+    "high_max": 55
   },
   "risk_weights": {
     "prior_rto_1": 15,
