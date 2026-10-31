@@ -30,3 +30,19 @@ def decide_order(order):
         "risk_level": risk["risk_level"],
         "reasons": risk["reasons"]
     }
+
+
+def calculate_prepaid_discount(order, decision):
+    from src.risk_model import load_config
+
+    config = load_config()
+    discounts = config["prepaid_discount"]
+
+    if decision["decision"] != "NUDGE_TO_PREPAID":
+        return 0
+
+    level = decision.get("risk_level", "MEDIUM")
+    percent = discounts["high_risk"] if level in ("HIGH", "CRITICAL") else discounts["medium_risk"]
+    value = float(order.get("order_value", 0) or 0)
+
+    return round(value * percent / 100, 2)
