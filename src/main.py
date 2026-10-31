@@ -1,27 +1,43 @@
+import sys
+from pathlib import Path
 
 import pandas as pd
 
-from risk_model import calculate_risk
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from src.decision_engine import decide_order
+from src.whatsapp_simulator import simulate_whatsapp
 
 
 def main():
-    data_path = "data/orders_sample.csv"
-    df = pd.read_csv(data_path)
+    data_file = BASE_DIR / "data" / "orders_sample.csv"
 
-    print("\n========== RISK MODEL TEST ==========")
+    if not data_file.exists():
+        print("Dataset not found:", data_file)
+        return
 
-    sample_orders = df.head(10)
+    df = pd.read_csv(data_file)
 
-    for _, order in sample_orders.iterrows():
-        result = calculate_risk(order)
+    print("\nOYTRA COD RTO DECISION ENGINE")
+    print("=" * 45)
 
-        print(f"\nOrder ID: {order['order_id']}")
-        print(f"Customer: {order['customer_name']}")
-        print(f"Risk Score: {result['risk_score']}")
-        print(f"Risk Level: {result['risk_level']}")
-        print(f"Reasons: {', '.join(result['reasons']) or 'No major risk signals'}")
+    for _, row in df.head(10).iterrows():
+        order = row.to_dict()
+        decision = decide_order(order)
 
-    print("\n=====================================")
+        print(f"\nOrder ID: {order.get('order_id')}")
+        print(f"Risk score: {decision['risk_score']}")
+        print(f"Risk level: {decision['risk_level']}")
+        print(f"Decision: {decision['decision']}")
+        print(f"Reasons: {decision['reasons']}")
+
+        simulation = simulate_whatsapp(
+            order,
+            decision,
+            seed=42
+        )
+        print(f"WhatsApp simulation: {simulation['outcome']}")
 
 
 if __name__ == "__main__":

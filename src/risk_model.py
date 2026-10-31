@@ -1,91 +1,76 @@
-
 import json
 from pathlib import Path
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_FILE = BASE_DIR / "config.json"
 
 
 def load_config():
-    with open(CONFIG_FILE, "r", encoding="utf-8-sig") as file:
+    with open(CONFIG_FILE, "r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def calculate_risk(order):
+    config = load_config()
+    weights = config["risk_weights"]
+
     score = 0
     reasons = []
 
-    # Previous customer RTO history
     prior_rto = int(order.get("customer_prior_rto", 0) or 0)
 
     if prior_rto >= 2:
-        score += 40
-        reasons.append("Customer has 2 or more previous RTOs")
+        score += weights["prior_rto_2_plus"]
+        reasons.append("Two or more previous RTOs")
     elif prior_rto == 1:
-        score += 15
-        reasons.append("Customer has 1 previous RTO")
+        score += weights["prior_rto_1"]
+        reasons.append("One previous RTO")
 
-    # Delivery location
     state = str(order.get("state", "")).strip().lower()
+    points = weights["state"].get(state, 0)
 
-    state_risk = {
-        "bihar": 25,
-        "uttar pradesh": 20,
-        "madhya pradesh": 15,
-        "assam": 12
-    }
+    if points:
+        score += points
+        reasons.append(f"State risk factor: {state}")
 
-    if state in state_risk:
-        score += state_risk[state]
-        reasons.append(f"Historically higher RTO location: {state}")
-
-    # Courier
     courier = str(order.get("courier", "")).strip().lower()
+    points = weights["courier"].get(courier, 0)
 
-    courier_risk = {
-        "xpressbees": 8,
-        "ecom express": 6
-    }
+    if points:
+        score += points
+        reasons.append(f"Courier risk factor: {courier}")
 
-    if courier in courier_risk:
-        score += courier_risk[courier]
-        reasons.append(f"Higher historical RTO courier: {courier}")
-
-    # Acquisition source
     source = str(order.get("utm_source", "")).strip().lower()
+    points = weights["source"].get(source, 0)
 
-    if source == "meta_ads":
-        score += 6
-        reasons.append("Meta Ads orders have higher historical RTO")
+    if points:
+        score += points
+        reasons.append(f"Acquisition source risk factor: {source}")
 
-    # Order value
     try:
         order_value = float(order.get("order_value", 0) or 0)
     except (TypeError, ValueError):
         order_value = 0
 
-    if order_value > 1500:
-        score += 8
-        reasons.append("Order value exceeds ₹1,500")
+    if order_value > weights["high_order_value_min"]:
+        score += weights["high_order_value_points"]
+        reasons.append("High-value order")
 
-    # Keep score within 0–100
     score = min(score, 100)
 
-    config = load_config()
     thresholds = config["risk_thresholds"]
 
     if score <= thresholds["low_max"]:
-        risk_level = "LOW"
+        level = "LOW"
     elif score <= thresholds["medium_max"]:
-        risk_level = "MEDIUM"
+        level = "MEDIUM"
     elif score <= thresholds["high_max"]:
-        risk_level = "HIGH"
+        level = "HIGH"
     else:
-        risk_level = "CRITICAL"
+        level = "CRITICAL"
 
     return {
         "risk_score": score,
-        "risk_level": risk_level,
+        "risk_level": level,
         "reasons": reasons
     }

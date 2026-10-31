@@ -1,9 +1,27 @@
-
 {
   "risk_thresholds": {
     "low_max": 30,
     "medium_max": 55,
     "high_max": 75
+  },
+  "risk_weights": {
+    "prior_rto_1": 15,
+    "prior_rto_2_plus": 40,
+    "state": {
+      "bihar": 25,
+      "uttar pradesh": 20,
+      "madhya pradesh": 15,
+      "assam": 12
+    },
+    "courier": {
+      "xpressbees": 8,
+      "ecom express": 6
+    },
+    "source": {
+      "meta_ads": 6
+    },
+    "high_order_value_min": 1500,
+    "high_order_value_points": 8
   },
   "financials": {
     "product_price": 649,
@@ -20,5 +38,12 @@
     "low_risk": 0,
     "medium_risk": 10,
     "high_risk": 20
+  },
+  "simulation": {
+    "confirmation_window_hours": 24,
+    "confirmation_response_probability": 0.65,
+    "prepaid_conversion_probability": 0.25,
+    "assumed_rto_reduction_after_confirmation_percent": 30,
+    "assumed_genuine_order_rate_among_cancelled_percent": 50
   }
 }
